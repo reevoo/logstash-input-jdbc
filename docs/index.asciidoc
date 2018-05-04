@@ -58,6 +58,7 @@ this file will be updated with the current value of `sql_last_value`. Next time
 the pipeline starts up, this value will be updated by reading from the file. If
 `clean_run` is set to true, this value will be ignored and `sql_last_value` will be
 set to Jan 1, 1970, or 0 if `use_column_value` is true, as if no query has ever been executed.
+It is also possible to store files to S3. Just define path in format s3://bucket_name/path/to/object.
 
 ==== Dealing With Large Result-sets
 

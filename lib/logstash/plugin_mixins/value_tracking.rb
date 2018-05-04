@@ -1,5 +1,6 @@
 # encoding: utf-8
 require "yaml" # persistence
+require "aws-sdk-s3"
 
 module LogStash module PluginMixins
   class ValueTracking
@@ -20,7 +21,11 @@ module LogStash module PluginMixins
 
       handler = NullFileHandler.new(plugin.last_run_metadata_path)
       if plugin.record_last_run
-        handler = FileHandler.new(plugin.last_run_metadata_path)
+        handler = if plugin.last_run_metadata_path.match("s3://")
+          S3FileHandler.new(plugin.last_run_metadata_path)
+        else
+          FileHandler.new(plugin.last_run_metadata_path)
+        end
       end
       if plugin.clean_run
         handler.clean
@@ -109,6 +114,34 @@ module LogStash module PluginMixins
     def write(value)
       ::File.write(@path, YAML.dump(value))
       @exists = true
+    end
+  end
+
+  class S3FileHandler
+    def initialize(path)
+      @path_segments = path.gsub("s3://", "").split("/")
+      @bucket = Aws::S3::Bucket.new(@path_segments.pop)
+      @object = @bucket.object(@path_segments.join("/"))
+    end
+
+    def clean
+      return unless exists
+      @object.delete
+    end
+
+    def read
+      return unless exists
+      YAML.load(@object.read)
+    end
+
+    def write(value)
+      @object.write(YAML.dump(value))
+    end
+
+    private
+
+    def exists
+      @object.exists?
     end
   end
 
